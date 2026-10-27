@@ -1,0 +1,1416 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proton Tier Lister</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #120019;
+            --surface2: #1e0a2e;
+            --surface3: #2a1040;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.35);
+            --text-dim: rgba(255, 255, 255, 0.55);
+            --danger: #ff5555;
+            --green: rgba(100, 220, 140, 0.85);
+            --radius: 14px;
+            --radius-sm: 8px;
+        }
+
+        html,
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #120019, #302145, #120019);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -180px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page-wrap {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 60px 24px 80px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+            animation: enterDown 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .header-eyebrow {
+            font-size: 0.65rem;
+            letter-spacing: 0.3em;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        .header h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            0% {
+                text-shadow: 0 0 15px rgba(255, 255, 255, 0.6), 0 0 25px rgba(255, 255, 255, 0.4);
+            }
+
+            100% {
+                text-shadow: 0 0 30px #fff, 0 0 55px rgba(255, 255, 255, 0.7), 0 0 80px rgba(200, 150, 255, 0.3);
+            }
+        }
+
+        .header-sub {
+            margin-top: 12px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main-layout {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            animation: enterUp 0.7s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .card {
+            width: 100%;
+            background: rgba(18, 0, 25, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 40px 80px rgba(0, 0, 0, 0.7), 0 0 40px rgba(100, 50, 150, 0.2);
+        }
+
+        .card-section {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .card-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 0.62rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── TIER ROWS ── */
+        .tiers-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tier-row {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            min-height: 68px;
+            transition: border-color 0.2s;
+        }
+
+        .tier-row.drag-over {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .tier-label-wrap {
+            width: 68px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: filter 0.2s;
+        }
+
+        .tier-label-wrap:hover {
+            filter: brightness(1.15);
+        }
+
+        .tier-label {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.4rem;
+            color: #000;
+            line-height: 1;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            letter-spacing: -0.02em;
+        }
+
+        .tier-label-edit {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+            transition: opacity 0.2s;
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        .tier-label-wrap:hover .tier-label-edit {
+            opacity: 1;
+        }
+
+        .tier-items {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            min-height: 68px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tier-items.drag-over {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tier-actions {
+            width: 34px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tier-action-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+            padding: 0;
+        }
+
+        .tier-action-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .tier-action-btn.del:hover {
+            background: rgba(255, 85, 85, 0.15);
+            color: var(--danger);
+        }
+
+        /* ── ITEMS ── */
+        .tier-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 54px;
+            height: 54px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            cursor: grab;
+            user-select: none;
+            font-size: 0.7rem;
+            color: #fff;
+            text-align: center;
+            transition: all 0.2s;
+            position: relative;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+
+        .tier-item:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.35);
+            transform: scale(1.04);
+        }
+
+        .tier-item.dragging {
+            opacity: 0.4;
+            transform: scale(0.95);
+            cursor: grabbing;
+        }
+
+        .tier-item.ghost {
+            opacity: 0.3;
+        }
+
+        .tier-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .tier-item.has-img {
+            padding: 3px;
+            width: 54px;
+        }
+
+        .tier-item .item-del {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 16px;
+            height: 16px;
+            background: var(--danger);
+            border-radius: 50%;
+            border: none;
+            color: #fff;
+            font-size: 0.55rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            box-shadow: 0 0 6px rgba(255, 85, 85, 0.5);
+        }
+
+        .tier-item:hover .item-del {
+            display: flex;
+        }
+
+        /* ── UNRANKED POOL ── */
+        .pool-section {}
+
+        .pool-drop {
+            min-height: 90px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 6px;
+            padding: 12px;
+            border: 1.5px dashed rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .pool-drop.drag-over {
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .pool-empty {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            align-self: center;
+            margin: auto;
+        }
+
+        /* ── ADD ITEMS ── */
+        .add-row {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .add-input {
+            flex: 1;
+            background: #302145;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            padding: 11px 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .add-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .add-input:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+        }
+
+        .add-img-btn,
+        .add-btn {
+            padding: 0 18px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.78rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .add-img-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-dim);
+        }
+
+        .add-img-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #302145, #120019);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .add-btn:hover {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        /* ── TOOLBAR ── */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            padding: 9px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .tool-btn.primary {
+            background: linear-gradient(135deg, #302145, #120019);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+        }
+
+        .tool-btn.primary:hover {
+            box-shadow: 0 0 22px rgba(255, 255, 255, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .tool-btn.danger {
+            color: var(--danger);
+            border-color: rgba(255, 85, 85, 0.2);
+        }
+
+        .tool-btn.danger:hover {
+            background: rgba(255, 85, 85, 0.08);
+            border-color: rgba(255, 85, 85, 0.4);
+        }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background: #1e0a2e;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius);
+            padding: 28px;
+            width: 340px;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal h3 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 18px;
+        }
+
+        .modal-field {
+            margin-bottom: 14px;
+        }
+
+        .modal-label {
+            font-size: 0.62rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 7px;
+            display: block;
+        }
+
+        .modal-input {
+            width: 100%;
+            background: #302145;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            padding: 10px 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .modal-input:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .color-swatches {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .color-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.15);
+        }
+
+        .color-swatch.selected {
+            border-color: #fff;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 11px;
+            border-radius: var(--radius-sm);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.2s;
+        }
+
+        .modal-btn.cancel {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+        }
+
+        .modal-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #302145, #120019);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn.confirm:hover {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(18, 0, 25, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 0.75rem;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .footer {
+            margin-top: 32px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            text-align: center;
+            animation: enterUp 0.7s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes enterDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes enterUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @media (max-width: 600px) {
+            .add-row {
+                flex-wrap: wrap;
+            }
+
+            .toolbar {
+                gap: 8px;
+            }
+
+            .tool-btn {
+                font-size: 0.67rem;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-wrap">
+        <div class="header">
+            <div class="header-eyebrow">v1.0 · Tier Ranking</div>
+            <h1>Proton <span>Tier Lister</span></h1>
+            <p class="header-sub">drag, drop, rank — export instantly</p>
+        </div>
+
+        <div class="main-layout">
+
+            <!-- Toolbar -->
+            <div class="card">
+                <div class="card-section" style="padding:16px 24px;">
+                    <div class="toolbar">
+                        <button class="tool-btn" id="addTierBtn">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Add Tier
+                        </button>
+                        <button class="tool-btn" id="exportImgBtn" class="primary">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            Export PNG
+                        </button>
+                        <button class="tool-btn" id="shareBtn">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="18" cy="5" r="3" />
+                                <circle cx="6" cy="12" r="3" />
+                                <circle cx="18" cy="19" r="3" />
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                            </svg>
+                            Copy JSON
+                        </button>
+                        <button class="tool-btn" id="clearAllBtn" style="margin-left:auto;" class="danger">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6" />
+                                <path d="M14 11v6" />
+                            </svg>
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tier Board -->
+            <div class="card" id="tierBoard">
+                <div class="card-section">
+                    <div class="section-title">Tier Board</div>
+                    <div class="tiers-container" id="tiersContainer"></div>
+                </div>
+            </div>
+
+            <!-- Unranked Pool -->
+            <div class="card">
+                <div class="card-section pool-section">
+                    <div class="section-title">Unranked Pool</div>
+                    <div class="pool-drop" id="poolDrop">
+                        <span class="pool-empty" id="poolEmpty">Add items below to get started</span>
+                    </div>
+                </div>
+                <div class="card-section">
+                    <div class="section-title">Add Items</div>
+                    <div class="add-row">
+                        <input class="add-input" id="addInput" placeholder="Item name…" maxlength="30">
+                        <button class="add-img-btn" id="addImgBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            Image
+                        </button>
+                        <button class="add-btn" id="addTextBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Add
+                        </button>
+                    </div>
+                    <input type="file" id="imgFileInput" accept="image/*" multiple hidden>
+                    <div style="margin-top:10px;font-size:0.65rem;color:var(--text-muted);">
+                        Tip — drag items between tiers, click the tier label to edit it, hold right-click on an item to delete it
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer">Proton Tier Lister &nbsp;·&nbsp; <span style="color:rgba(255,255,255,0.6);">drag, drop, rank, share</span></div>
+    </div>
+
+    <!-- Edit Tier Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h3>Edit Tier</h3>
+            <div class="modal-field">
+                <label class="modal-label">Label</label>
+                <input class="modal-input" id="editLabel" maxlength="4" placeholder="S">
+            </div>
+            <div class="modal-field">
+                <label class="modal-label">Color</label>
+                <div class="color-swatches" id="colorSwatches"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" id="editCancel">Cancel</button>
+                <button class="modal-btn confirm" id="editConfirm">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ─── State ───────────────────────────────────────────────
+        const COLORS = [
+            '#ff7043', '#ff8c00', '#ffc107', '#c5e84a',
+            '#4caf50', '#26c6da', '#42a5f5', '#7c4dff',
+            '#e040fb', '#ec407a', '#ff5555', '#607d8b'
+        ];
+
+        const DEFAULT_TIERS = [{
+                id: uid(),
+                label: 'S',
+                color: '#ff7043'
+            },
+            {
+                id: uid(),
+                label: 'A',
+                color: '#ffc107'
+            },
+            {
+                id: uid(),
+                label: 'B',
+                color: '#c5e84a'
+            },
+            {
+                id: uid(),
+                label: 'C',
+                color: '#42a5f5'
+            },
+            {
+                id: uid(),
+                label: 'D',
+                color: '#7c4dff'
+            },
+            {
+                id: uid(),
+                label: 'F',
+                color: '#607d8b'
+            },
+        ];
+
+        let tiers = DEFAULT_TIERS.map(t => ({
+            ...t,
+            items: []
+        }));
+        let pool = [];
+        let dragItem = null,
+            dragFrom = null; // {type:'tier'|'pool', tierId?, index}
+
+        function uid() {
+            return Math.random().toString(36).slice(2, 9);
+        }
+
+        // ─── Render ───────────────────────────────────────────────
+        function render() {
+            renderTiers();
+            renderPool();
+        }
+
+        function renderTiers() {
+            const c = document.getElementById('tiersContainer');
+            c.innerHTML = '';
+            tiers.forEach((tier, ti) => {
+                const row = document.createElement('div');
+                row.className = 'tier-row';
+                row.dataset.tierId = tier.id;
+
+                // Label
+                const lw = document.createElement('div');
+                lw.className = 'tier-label-wrap';
+                lw.style.background = tier.color;
+                lw.innerHTML = `<div class="tier-label">${esc(tier.label)}</div><div class="tier-label-edit">EDIT</div>`;
+                lw.addEventListener('click', () => openEditModal(tier.id));
+                row.appendChild(lw);
+
+                // Items area
+                const items = document.createElement('div');
+                items.className = 'tier-items';
+                items.dataset.tierId = tier.id;
+
+                tier.items.forEach((item, ii) => {
+                    items.appendChild(makeItemEl(item, {
+                        type: 'tier',
+                        tierId: tier.id,
+                        index: ii
+                    }));
+                });
+
+                setupDropZone(items, {
+                    type: 'tier',
+                    tierId: tier.id
+                });
+                row.appendChild(items);
+
+                // Actions
+                const acts = document.createElement('div');
+                acts.className = 'tier-actions';
+                acts.innerHTML = `
+            <button class="tier-action-btn" title="Move up" data-dir="up" data-ti="${ti}">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button class="tier-action-btn" title="Move down" data-dir="down" data-ti="${ti}">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <button class="tier-action-btn del" title="Delete tier" data-del="${tier.id}">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>`;
+                acts.querySelectorAll('[data-dir]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const t = +btn.dataset.ti,
+                            dir = btn.dataset.dir;
+                        const swap = dir === 'up' ? t - 1 : t + 1;
+                        if (swap < 0 || swap >= tiers.length) return;
+                        [tiers[t], tiers[swap]] = [tiers[swap], tiers[t]];
+                        render();
+                    });
+                });
+                acts.querySelector('[data-del]').addEventListener('click', () => {
+                    const id = acts.querySelector('[data-del]').dataset.del;
+                    const t = tiers.find(x => x.id === id);
+                    if (!t) return;
+                    pool = [...pool, ...t.items];
+                    tiers = tiers.filter(x => x.id !== id);
+                    render();
+                    toast('Tier deleted — items returned to pool');
+                });
+                row.appendChild(acts);
+                c.appendChild(row);
+            });
+        }
+
+        function renderPool() {
+            const p = document.getElementById('poolDrop');
+            p.innerHTML = '';
+            if (pool.length === 0) {
+                const e = document.createElement('span');
+                e.className = 'pool-empty';
+                e.textContent = 'No unranked items';
+                p.appendChild(e);
+            } else {
+                pool.forEach((item, i) => {
+                    p.appendChild(makeItemEl(item, {
+                        type: 'pool',
+                        index: i
+                    }));
+                });
+            }
+            setupDropZone(p, {
+                type: 'pool'
+            });
+        }
+
+        function makeItemEl(item, loc) {
+            const el = document.createElement('div');
+            el.className = 'tier-item' + (item.img ? ' has-img' : '');
+            el.draggable = true;
+            el.dataset.itemId = item.id;
+
+            if (item.img) {
+                const img = document.createElement('img');
+                img.src = item.img;
+                img.alt = item.label || '';
+                el.appendChild(img);
+            } else {
+                el.textContent = item.label;
+            }
+
+            // Delete button
+            const del = document.createElement('button');
+            del.className = 'item-del';
+            del.innerHTML = '✕';
+            del.addEventListener('click', e => {
+                e.stopPropagation();
+                removeItem(item.id);
+            });
+            el.appendChild(del);
+
+            // Drag
+            el.addEventListener('dragstart', ev => {
+                dragItem = item;
+                dragFrom = loc;
+                el.classList.add('dragging');
+                ev.dataTransfer.effectAllowed = 'move';
+            });
+            el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+            // Right click delete
+            el.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                removeItem(item.id);
+            });
+
+            return el;
+        }
+
+        function setupDropZone(el, dest) {
+            el.addEventListener('dragover', e => {
+                e.preventDefault();
+                el.classList.add('drag-over');
+            });
+            el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+            el.addEventListener('drop', e => {
+                e.preventDefault();
+                el.classList.remove('drag-over');
+                if (!dragItem) return;
+                moveItem(dragItem.id, dragFrom, dest);
+                dragItem = null;
+                dragFrom = null;
+            });
+        }
+
+        function moveItem(itemId, from, to) {
+            // Remove from source
+            if (from.type === 'pool') {
+                pool = pool.filter(i => i.id !== itemId);
+            } else {
+                const src = tiers.find(t => t.id === from.tierId);
+                if (src) src.items = src.items.filter(i => i.id !== itemId);
+            }
+
+            // Add to destination
+            const item = getAllItems().find(i => i.id === itemId) || dragItem;
+            if (to.type === 'pool') {
+                if (!pool.find(i => i.id === itemId)) pool.push(item);
+            } else {
+                const dst = tiers.find(t => t.id === to.tierId);
+                if (dst && !dst.items.find(i => i.id === itemId)) dst.items.push(item);
+            }
+            render();
+        }
+
+        function getAllItems() {
+            return [...pool, ...tiers.flatMap(t => t.items)];
+        }
+
+        function removeItem(id) {
+            pool = pool.filter(i => i.id !== id);
+            tiers.forEach(t => t.items = t.items.filter(i => i.id !== id));
+            render();
+        }
+
+        function esc(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // ─── Add Items ────────────────────────────────────────────
+        document.getElementById('addTextBtn').addEventListener('click', addTextItem);
+        document.getElementById('addInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') addTextItem();
+        });
+
+        function addTextItem() {
+            const inp = document.getElementById('addInput');
+            const val = inp.value.trim();
+            if (!val) return;
+            pool.push({
+                id: uid(),
+                label: val
+            });
+            inp.value = '';
+            render();
+            inp.focus();
+        }
+
+        document.getElementById('addImgBtn').addEventListener('click', () => {
+            document.getElementById('imgFileInput').click();
+        });
+
+        document.getElementById('imgFileInput').addEventListener('change', function() {
+            const files = Array.from(this.files);
+            if (!files.length) return;
+            let loaded = 0;
+            files.forEach(f => {
+                const r = new FileReader();
+                r.onload = ev => {
+                    pool.push({
+                        id: uid(),
+                        label: f.name.replace(/\.[^.]+$/, ''),
+                        img: ev.target.result
+                    });
+                    loaded++;
+                    if (loaded === files.length) render();
+                };
+                r.readAsDataURL(f);
+            });
+            this.value = '';
+        });
+
+        // ─── Add Tier ─────────────────────────────────────────────
+        document.getElementById('addTierBtn').addEventListener('click', () => {
+            const colors = ['#ff7043', '#ffc107', '#c5e84a', '#42a5f5', '#7c4dff', '#ec407a'];
+            const color = colors[tiers.length % colors.length];
+            tiers.push({
+                id: uid(),
+                label: '?',
+                color,
+                items: []
+            });
+            render();
+            toast('Tier added — click label to rename');
+        });
+
+        // ─── Clear All ────────────────────────────────────────────
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            if (!confirm('Clear all items and tiers?')) return;
+            tiers = DEFAULT_TIERS.map(t => ({
+                ...t,
+                items: []
+            }));
+            pool = [];
+            render();
+            toast('Cleared — reset to defaults');
+        });
+
+        // ─── Edit Modal ───────────────────────────────────────────
+        let editingTierId = null;
+        let selectedColor = null;
+
+        function openEditModal(tierId) {
+            const t = tiers.find(x => x.id === tierId);
+            if (!t) return;
+            editingTierId = tierId;
+            selectedColor = t.color;
+            document.getElementById('editLabel').value = t.label;
+
+            const sw = document.getElementById('colorSwatches');
+            sw.innerHTML = '';
+            COLORS.forEach(c => {
+                const s = document.createElement('div');
+                s.className = 'color-swatch' + (c === t.color ? ' selected' : '');
+                s.style.background = c;
+                s.addEventListener('click', () => {
+                    sw.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+                    s.classList.add('selected');
+                    selectedColor = c;
+                });
+                sw.appendChild(s);
+            });
+
+            document.getElementById('editModal').classList.add('show');
+            document.getElementById('editLabel').focus();
+            document.getElementById('editLabel').select();
+        }
+
+        document.getElementById('editCancel').addEventListener('click', closeModal);
+        document.getElementById('editModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+        document.getElementById('editConfirm').addEventListener('click', () => {
+            const label = document.getElementById('editLabel').value.trim() || '?';
+            const t = tiers.find(x => x.id === editingTierId);
+            if (t) {
+                t.label = label;
+                t.color = selectedColor;
+            }
+            closeModal();
+            render();
+        });
+
+        document.getElementById('editLabel').addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('editConfirm').click();
+            if (e.key === 'Escape') closeModal();
+        });
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('show');
+            editingTierId = null;
+        }
+
+        // ─── Copy JSON ───────────────────────────────────────────
+        document.getElementById('shareBtn').addEventListener('click', () => {
+            const data = {
+                tiers: tiers.map(t => ({
+                    label: t.label,
+                    color: t.color,
+                    items: t.items.map(i => i.label)
+                })),
+                pool: pool.map(i => i.label)
+            };
+            navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+                toast('JSON copied to clipboard ✓');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = JSON.stringify(data, null, 2);
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                toast('JSON copied ✓');
+            });
+        });
+
+        // ─── Export PNG ──────────────────────────────────────────
+        document.getElementById('exportImgBtn').addEventListener('click', async () => {
+            const board = document.getElementById('tierBoard');
+            try {
+                // Use html2canvas-like approach via canvas
+                await exportBoardPNG(board);
+            } catch (e) {
+                toast('Export failed: ' + e.message);
+            }
+        });
+
+        async function exportBoardPNG(boardEl) {
+            // Build a canvas from scratch by reading the current state
+            const LABEL_W = 80;
+            const ITEM_SIZE = 60;
+            const ITEM_PAD = 6;
+            const ROW_PAD = 10;
+            const HEADER_H = 50;
+            const FONT = 'bold 18px Syne, sans-serif';
+            const ITEM_FONT = '11px DM Mono, monospace';
+
+            // Estimate heights
+            const rowHeights = tiers.map(t => {
+                const rows = Math.max(1, Math.ceil(t.items.length * (ITEM_SIZE + ITEM_PAD) / 600));
+                return Math.max(68, rows * (ITEM_SIZE + ITEM_PAD) + ROW_PAD * 2);
+            });
+            const totalH = HEADER_H + rowHeights.reduce((a, b) => a + b, 0) + (tiers.length - 1) * 6 + 40;
+            const W = 860;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = W * 2;
+            canvas.height = totalH * 2;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+
+            // Background
+            const bgGrad = ctx.createLinearGradient(0, 0, W, totalH);
+            bgGrad.addColorStop(0, '#120019');
+            bgGrad.addColorStop(0.5, '#302145');
+            bgGrad.addColorStop(1, '#120019');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, W, totalH);
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.012)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, totalH);
+                ctx.stroke();
+            }
+            for (let y = 0; y < totalH; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+
+            // Header
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 28px Syne, sans-serif';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Proton Tier Lister', 28, 28);
+
+            let y = HEADER_H;
+
+            for (let ti = 0; ti < tiers.length; ti++) {
+                const tier = tiers[ti];
+                const rh = rowHeights[ti];
+
+                // Row bg
+                ctx.fillStyle = 'rgba(255,255,255,0.02)';
+                roundRect(ctx, 0, y, W, rh, 8);
+                ctx.fill();
+
+                // Tier label bg
+                ctx.fillStyle = tier.color;
+                roundRect(ctx, 0, y, LABEL_W, rh, 8);
+                ctx.fill();
+
+                // Tier label text
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 26px Syne, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(tier.label, LABEL_W / 2, y + rh / 2);
+                ctx.textAlign = 'left';
+
+                // Items
+                let ix = LABEL_W + ITEM_PAD;
+                let iy = y + ROW_PAD;
+
+                const imagePromises = [];
+                tier.items.forEach((item, i) => {
+                    const col = Math.floor((ix - LABEL_W - ITEM_PAD) / (ITEM_SIZE + ITEM_PAD));
+                    const row = 0;
+                    const itemX = LABEL_W + ITEM_PAD + (i % Math.floor((W - LABEL_W - ITEM_PAD * 2) / (ITEM_SIZE + ITEM_PAD))) * (ITEM_SIZE + ITEM_PAD);
+                    const rowIdx = Math.floor(i / Math.floor((W - LABEL_W - ITEM_PAD * 2) / (ITEM_SIZE + ITEM_PAD)));
+                    const itemY = y + ROW_PAD + rowIdx * (ITEM_SIZE + ITEM_PAD);
+
+                    // item bg
+                    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                    roundRect(ctx, itemX, itemY, ITEM_SIZE, ITEM_SIZE, 6);
+                    ctx.fill();
+
+                    if (item.img) {
+                        const p = new Promise(resolve => {
+                            const img = new Image();
+                            img.onload = () => {
+                                roundRect(ctx, itemX + 2, itemY + 2, ITEM_SIZE - 4, ITEM_SIZE - 4, 4);
+                                ctx.save();
+                                ctx.clip();
+                                ctx.drawImage(img, itemX + 2, itemY + 2, ITEM_SIZE - 4, ITEM_SIZE - 4);
+                                ctx.restore();
+                                resolve();
+                            };
+                            img.onerror = resolve;
+                            img.src = item.img;
+                        });
+                        imagePromises.push(p);
+                    } else {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '10px DM Mono, monospace';
+                        ctx.textAlign = 'center';
+                        const words = item.label.split(' ');
+                        let line = '',
+                            lines = [];
+                        for (const w of words) {
+                            const test = line ? line + ' ' + w : w;
+                            if (ctx.measureText(test).width > ITEM_SIZE - 8) {
+                                if (line) lines.push(line);
+                                line = w;
+                            } else line = test;
+                        }
+                        if (line) lines.push(line);
+                        const lh = 12;
+                        const startY = itemY + ITEM_SIZE / 2 - (lines.length * lh) / 2 + 6;
+                        lines.forEach((l, li) => ctx.fillText(l, itemX + ITEM_SIZE / 2, startY + li * lh));
+                        ctx.textAlign = 'left';
+                    }
+                });
+
+                await Promise.all(imagePromises);
+
+                // separator
+                ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                ctx.fillRect(0, y + rh, W, 1);
+
+                y += rh + 6;
+            }
+
+            // Download
+            const link = document.createElement('a');
+            link.download = 'tier-list.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            toast('PNG exported ✓');
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        // ─── Toast ────────────────────────────────────────────────
+        let toastTimer;
+
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+        }
+
+        // ─── Init ─────────────────────────────────────────────────
+        render();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1652 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proton Timer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #120019;
+            --surface: rgba(18, 0, 25, 0.95);
+            --surface2: #1e0a2e;
+            --surface3: #2a1040;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.5);
+            --accent: #ffffff;
+            --accent-dim: rgba(255, 255, 255, 0.06);
+            --accent-glow: rgba(255, 255, 255, 0.3);
+            --text: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.35);
+            --text-dim: rgba(255, 255, 255, 0.55);
+            --danger: #ff5555;
+            --success: #55ffaa;
+            --radius: 14px;
+            --radius-sm: 8px;
+        }
+
+        html,
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #120019, #302145, #120019);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -180px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page-wrap {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 24px 80px;
+        }
+
+        /* HEADER */
+        .header {
+            text-align: center;
+            margin-bottom: 36px;
+            animation: enterDown 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .header-eyebrow {
+            font-size: 0.65rem;
+            letter-spacing: 0.3em;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        .header h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            animation: glow 2s infinite alternate;
+        }
+
+        .header-sub {
+            margin-top: 10px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        @keyframes glow {
+            0% {
+                text-shadow: 0 0 15px rgba(255, 255, 255, 0.6), 0 0 25px rgba(255, 255, 255, 0.4);
+            }
+
+            100% {
+                text-shadow: 0 0 30px #ffffff, 0 0 55px rgba(255, 255, 255, 0.7), 0 0 80px rgba(200, 150, 255, 0.3);
+            }
+        }
+
+        /* NAV TABS */
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: rgba(18, 0, 25, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            padding: 6px;
+            margin-bottom: 24px;
+            animation: enterDown 0.7s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-tab {
+            padding: 9px 18px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-tab.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+
+        /* CARD */
+        .card {
+            width: 100%;
+            max-width: 640px;
+            background: rgba(18, 0, 25, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            overflow: hidden;
+            animation: enterUp 0.7s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 40px 80px rgba(0, 0, 0, 0.7), 0 0 40px rgba(100, 50, 150, 0.2);
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        /* SECTION */
+        .card-section {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .card-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 0.62rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* BIG CLOCK DISPLAY */
+        .time-display {
+            text-align: center;
+            padding: 32px 24px;
+            position: relative;
+        }
+
+        .time-digits {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(3.5rem, 14vw, 7rem);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #fff;
+            line-height: 1;
+            animation: glow 2s infinite alternate;
+            transition: color 0.3s;
+        }
+
+        .time-digits.warning {
+            color: #ffcc44;
+        }
+
+        .time-digits.danger {
+            color: #ff5555;
+        }
+
+        .time-millis {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(1.2rem, 4vw, 2rem);
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: -0.02em;
+            margin-left: 4px;
+        }
+
+        .time-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* CLOCK SPECIFIC */
+        .clock-date {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .clock-tz {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            letter-spacing: 0.08em;
+        }
+
+        /* BUTTON ROW */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            padding: 0 24px 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 90px;
+            padding: 13px 10px;
+            background: linear-gradient(135deg, #302145, #120019);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.08), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.45s;
+        }
+
+        .btn:hover {
+            box-shadow: 0 0 22px #fff, 0 0 35px rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn:hover::after {
+            transform: translateX(100%);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.secondary {
+            background: var(--surface3);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn.danger-btn {
+            box-shadow: 0 0 12px rgba(255, 85, 85, 0.4);
+        }
+
+        .btn.danger-btn:hover {
+            box-shadow: 0 0 22px #ff5555, 0 0 35px rgba(255, 85, 85, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* LAPS */
+        .laps-list {
+            max-height: 220px;
+            overflow-y: auto;
+            padding: 0 24px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+
+        .lap-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 14px;
+            background: var(--surface3);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: var(--radius-sm);
+            font-size: 0.78rem;
+            animation: enterUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .lap-num {
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+        }
+
+        .lap-split {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.7rem;
+        }
+
+        .lap-time {
+            font-weight: 500;
+            letter-spacing: 0.05em;
+        }
+
+        .lap-item.best-lap .lap-time {
+            color: var(--success);
+            text-shadow: 0 0 8px rgba(85, 255, 170, 0.5);
+        }
+
+        .lap-item.worst-lap .lap-time {
+            color: #ff9944;
+        }
+
+        /* TIMER INPUTS */
+        .timer-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 24px 0;
+            flex-wrap: wrap;
+        }
+
+        .time-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-unit label {
+            font-size: 0.6rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .time-unit-sep {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: -6px;
+        }
+
+        .num-input {
+            width: 80px;
+            background: #302145;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 2rem;
+            text-align: center;
+            padding: 10px 6px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -moz-appearance: textfield;
+        }
+
+        .num-input::-webkit-outer-spin-button,
+        .num-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+        }
+
+        .num-input:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+        }
+
+        /* PRESET BUTTONS */
+        .preset-row {
+            display: flex;
+            gap: 8px;
+            padding: 16px 24px 0;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 6px 12px;
+            background: var(--surface3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.05em;
+        }
+
+        .preset-btn:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        /* PROGRESS RING */
+        .progress-wrap {
+            display: flex;
+            justify-content: center;
+            padding: 20px 0 0;
+            position: relative;
+        }
+
+        .progress-svg {
+            transform: rotate(-90deg);
+        }
+
+        .progress-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.07);
+            stroke-width: 4;
+        }
+
+        .progress-bar {
+            fill: none;
+            stroke: #fff;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 408;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.5s linear, stroke 0.3s;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+        }
+
+        .progress-bar.warning {
+            stroke: #ffcc44;
+            filter: drop-shadow(0 0 6px rgba(255, 200, 68, 0.8));
+        }
+
+        .progress-bar.danger {
+            stroke: #ff5555;
+            filter: drop-shadow(0 0 6px rgba(255, 85, 85, 0.8));
+        }
+
+        /* ALARM DISPLAY */
+        .alarm-set-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .alarm-set-row input[type="time"] {
+            flex: 1;
+            background: #302145;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-family: 'DM Mono', monospace;
+            font-size: 1.1rem;
+            padding: 12px 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            color-scheme: dark;
+        }
+
+        .alarm-set-row input[type="time"]:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+        }
+
+        .alarm-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .alarm-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--surface3);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: var(--radius-sm);
+            animation: enterUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .alarm-time {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .alarm-label-txt {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .alarm-del {
+            background: none;
+            border: 1px solid rgba(255, 85, 85, 0.3);
+            border-radius: 6px;
+            color: rgba(255, 85, 85, 0.6);
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            transition: all 0.2s;
+        }
+
+        .alarm-del:hover {
+            background: rgba(255, 85, 85, 0.1);
+            color: #ff5555;
+            border-color: #ff5555;
+        }
+
+        .alarm-item.active .alarm-time {
+            color: var(--success);
+            text-shadow: 0 0 10px rgba(85, 255, 170, 0.5);
+        }
+
+        /* TOGGLE */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 38px;
+            height: 22px;
+            cursor: pointer;
+        }
+
+        .toggle input {
+            display: none;
+        }
+
+        .toggle-track {
+            position: absolute;
+            inset: 0;
+            background: var(--surface3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 11px;
+            transition: all 0.25s;
+        }
+
+        .toggle input:checked+.toggle-track {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+
+        .toggle-thumb {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+        }
+
+        .toggle input:checked~.toggle-thumb {
+            transform: translateX(16px);
+        }
+
+        /* WORLD TIMES */
+        .world-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 0 24px 24px;
+        }
+
+        .world-item {
+            background: var(--surface3);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .world-item:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 14px rgba(255, 255, 255, 0.06);
+        }
+
+        .world-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        }
+
+        .world-city {
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .world-tz-name {
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.2);
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .world-time {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: #fff;
+        }
+
+        .world-date {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        .world-diff {
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.25);
+            margin-top: 3px;
+        }
+
+        /* ADD CITY */
+        .add-city-row {
+            display: flex;
+            gap: 10px;
+            padding: 24px 24px 16px;
+            align-items: flex-end;
+        }
+
+        select.city-select {
+            flex: 1;
+            appearance: none;
+            background: #302145;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            padding: 11px 14px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select.city-select:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        select.city-select option {
+            background: #1e0a2e;
+        }
+
+        /* SEG CONTROL */
+        .seg-control {
+            display: flex;
+            background: #1e0a2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .seg-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px 6px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.35);
+            cursor: pointer;
+            transition: all 0.18s;
+            user-select: none;
+            border-right: 1px solid rgba(255, 255, 255, 0.07);
+            position: relative;
+        }
+
+        .seg-option:last-child {
+            border-right: none;
+        }
+
+        .seg-option:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .seg-option.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+
+        .seg-option.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #fff;
+            border-radius: 2px 2px 0 0;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        }
+
+        /* STATUS TAG */
+        .status-tag {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 4px 12px;
+            margin: 0 auto 12px;
+            width: fit-content;
+        }
+
+        .status-tag.show {
+            display: flex;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 6px #fff;
+            }
+
+            50% {
+                opacity: 0.4;
+                box-shadow: none;
+            }
+        }
+
+        /* INPUT TEXT */
+        input[type="text"] {
+            background: #302145;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            padding: 11px 14px;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        input[type="text"]:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 32px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            text-align: center;
+            animation: enterUp 0.7s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes enterDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes enterUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            padding: 20px;
+            letter-spacing: 0.05em;
+        }
+
+        /* RING ALARM OVERLAY */
+        .alarm-ring {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .alarm-ring.show {
+            display: flex;
+        }
+
+        .alarm-ring h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 800;
+            animation: glow 0.8s infinite alternate;
+            letter-spacing: -0.02em;
+        }
+
+        .alarm-ring p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+        }
+
+        @media(max-width:520px) {
+            .world-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .world-time {
+                font-size: 1.3rem;
+            }
+
+            .nav-tab {
+                padding: 7px 12px;
+                font-size: 0.68rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-wrap">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-eyebrow">v1.0 · Time Suite</div>
+            <h1>Proton <span style="color:#fff">Timer</span></h1>
+            <p class="header-sub">clock · stopwatch · timer · alarm · world times</p>
+        </div>
+
+        <!-- NAV TABS -->
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-panel="clock">Clock</div>
+            <div class="nav-tab" data-panel="stopwatch">Stopwatch</div>
+            <div class="nav-tab" data-panel="timer">Timer</div>
+            <div class="nav-tab" data-panel="alarm">Alarm</div>
+            <div class="nav-tab" data-panel="world">World Times</div>
+        </div>
+
+        <!-- CARD -->
+        <div class="card">
+
+            <!-- ═══ CLOCK PANEL ═══ -->
+            <div class="panel active" id="panel-clock">
+                <div class="time-display">
+                    <div class="time-digits" id="clock-time">00:00:00</div>
+                    <div class="clock-date" id="clock-date">—</div>
+                    <div class="clock-tz" id="clock-tz">—</div>
+                </div>
+                <div class="card-section" style="padding-top:0">
+                    <div class="section-title">Format</div>
+                    <div class="seg-control" id="clockFmtSeg">
+                        <div class="seg-option active" data-value="12">12-hour</div>
+                        <div class="seg-option" data-value="24">24-hour</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ STOPWATCH PANEL ═══ -->
+            <div class="panel" id="panel-stopwatch">
+                <div class="time-display">
+                    <div style="display:flex;align-items:baseline;justify-content:center;gap:2px;">
+                        <span class="time-digits" id="sw-display">00:00</span>
+                        <span class="time-millis" id="sw-ms">.00</span>
+                    </div>
+                    <div class="time-label">ELAPSED TIME</div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn" id="sw-start">Start</button>
+                    <button class="btn secondary" id="sw-lap" disabled>Lap</button>
+                    <button class="btn secondary" id="sw-reset" disabled>Reset</button>
+                </div>
+                <div class="card-section" style="padding-bottom:0">
+                    <div class="section-title">Lap History</div>
+                </div>
+                <div class="laps-list" id="sw-laps">
+                    <div class="empty-state" id="sw-laps-empty">No laps yet — start the stopwatch</div>
+                </div>
+            </div>
+
+            <!-- ═══ TIMER PANEL ═══ -->
+            <div class="panel" id="panel-timer">
+                <div class="progress-wrap">
+                    <svg class="progress-svg" width="150" height="150" viewBox="0 0 150 150">
+                        <circle class="progress-bg" cx="75" cy="75" r="65" />
+                        <circle class="progress-bar" id="timer-ring" cx="75" cy="75" r="65" />
+                    </svg>
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+                        <div class="time-digits" id="timer-display" style="font-size:clamp(1.8rem,7vw,3rem);">00:00</div>
+                        <div class="time-label" id="timer-label">SET A DURATION</div>
+                    </div>
+                </div>
+                <div class="timer-inputs" id="timer-inputs">
+                    <div class="time-unit">
+                        <label>Hours</label>
+                        <input class="num-input" type="number" id="t-h" min="0" max="23" value="0" placeholder="00">
+                    </div>
+                    <div class="time-unit-sep">:</div>
+                    <div class="time-unit">
+                        <label>Minutes</label>
+                        <input class="num-input" type="number" id="t-m" min="0" max="59" value="5" placeholder="00">
+                    </div>
+                    <div class="time-unit-sep">:</div>
+                    <div class="time-unit">
+                        <label>Seconds</label>
+                        <input class="num-input" type="number" id="t-s" min="0" max="59" value="0" placeholder="00">
+                    </div>
+                </div>
+                <div class="preset-row">
+                    <button class="preset-btn" data-m="1">1 min</button>
+                    <button class="preset-btn" data-m="3">3 min</button>
+                    <button class="preset-btn" data-m="5">5 min</button>
+                    <button class="preset-btn" data-m="10">10 min</button>
+                    <button class="preset-btn" data-m="15">15 min</button>
+                    <button class="preset-btn" data-m="30">30 min</button>
+                    <button class="preset-btn" data-m="60">1 hr</button>
+                </div>
+                <div class="btn-row" style="padding-top:16px;">
+                    <button class="btn" id="timer-start">Start</button>
+                    <button class="btn secondary" id="timer-pause" disabled>Pause</button>
+                    <button class="btn secondary danger-btn" id="timer-reset" disabled>Reset</button>
+                </div>
+            </div>
+
+            <!-- ═══ ALARM PANEL ═══ -->
+            <div class="panel" id="panel-alarm">
+                <div class="card-section">
+                    <div class="section-title">Set Alarm</div>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div class="alarm-set-row">
+                            <input type="time" id="alarm-time-input">
+                            <button class="btn" id="alarm-add-btn" style="flex:0 0 auto;padding:12px 20px;">Add</button>
+                        </div>
+                        <div>
+                            <input type="text" id="alarm-label-input" placeholder="Label (optional)">
+                        </div>
+                    </div>
+                </div>
+                <div class="card-section">
+                    <div class="section-title">Alarms</div>
+                    <div class="alarm-list" id="alarm-list">
+                        <div class="empty-state" id="alarm-empty">No alarms set</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ WORLD TIMES PANEL ═══ -->
+            <div class="panel" id="panel-world">
+                <div class="add-city-row">
+                    <select class="city-select" id="city-select">
+                        <option value="">Add a city…</option>
+                        <option value="America/New_York|New York">🇺🇸 New York</option>
+                        <option value="America/Chicago|Chicago">🇺🇸 Chicago</option>
+                        <option value="America/Denver|Denver">🇺🇸 Denver</option>
+                        <option value="America/Los_Angeles|Los Angeles">🇺🇸 Los Angeles</option>
+                        <option value="America/Anchorage|Anchorage">🇺🇸 Anchorage</option>
+                        <option value="Pacific/Honolulu|Honolulu">🇺🇸 Honolulu</option>
+                        <option value="America/Toronto|Toronto">🇨🇦 Toronto</option>
+                        <option value="America/Vancouver|Vancouver">🇨🇦 Vancouver</option>
+                        <option value="America/Sao_Paulo|São Paulo">🇧🇷 São Paulo</option>
+                        <option value="America/Buenos_Aires|Buenos Aires">🇦🇷 Buenos Aires</option>
+                        <option value="America/Mexico_City|Mexico City">🇲🇽 Mexico City</option>
+                        <option value="Europe/London|London">🇬🇧 London</option>
+                        <option value="Europe/Paris|Paris">🇫🇷 Paris</option>
+                        <option value="Europe/Berlin|Berlin">🇩🇪 Berlin</option>
+                        <option value="Europe/Madrid|Madrid">🇪🇸 Madrid</option>
+                        <option value="Europe/Rome|Rome">🇮🇹 Rome</option>
+                        <option value="Europe/Amsterdam|Amsterdam">🇳🇱 Amsterdam</option>
+                        <option value="Europe/Moscow|Moscow">🇷🇺 Moscow</option>
+                        <option value="Europe/Istanbul|Istanbul">🇹🇷 Istanbul</option>
+                        <option value="Africa/Cairo|Cairo">🇪🇬 Cairo</option>
+                        <option value="Africa/Johannesburg|Johannesburg">🇿🇦 Johannesburg</option>
+                        <option value="Africa/Lagos|Lagos">🇳🇬 Lagos</option>
+                        <option value="Asia/Dubai|Dubai">🇦🇪 Dubai</option>
+                        <option value="Asia/Karachi|Karachi">🇵🇰 Karachi</option>
+                        <option value="Asia/Kolkata|Mumbai">🇮🇳 Mumbai</option>
+                        <option value="Asia/Dhaka|Dhaka">🇧🇩 Dhaka</option>
+                        <option value="Asia/Bangkok|Bangkok">🇹🇭 Bangkok</option>
+                        <option value="Asia/Singapore|Singapore">🇸🇬 Singapore</option>
+                        <option value="Asia/Shanghai|Shanghai">🇨🇳 Shanghai</option>
+                        <option value="Asia/Tokyo|Tokyo">🇯🇵 Tokyo</option>
+                        <option value="Asia/Seoul|Seoul">🇰🇷 Seoul</option>
+                        <option value="Asia/Hong_Kong|Hong Kong">🇭🇰 Hong Kong</option>
+                        <option value="Asia/Jakarta|Jakarta">🇮🇩 Jakarta</option>
+                        <option value="Australia/Sydney|Sydney">🇦🇺 Sydney</option>
+                        <option value="Australia/Melbourne|Melbourne">🇦🇺 Melbourne</option>
+                        <option value="Pacific/Auckland|Auckland">🇳🇿 Auckland</option>
+                        <option value="UTC|UTC">🌐 UTC</option>
+                    </select>
+                    <button class="btn" id="add-city-btn" style="flex:0 0 auto;padding:11px 18px;font-size:0.8rem;">Add</button>
+                </div>
+                <div class="world-grid" id="world-grid">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+        </div><!-- /card -->
+
+        <div class="footer">Proton Timer &nbsp;·&nbsp; <span style="color:rgba(255,255,255,0.6);">all time, in one place</span></div>
+    </div>
+
+    <!-- ALARM RING OVERLAY -->
+    <div class="alarm-ring" id="alarm-ring">
+        <h2>⏰ ALARM!</h2>
+        <p id="alarm-ring-label">Time's up</p>
+        <button class="btn" id="alarm-dismiss" style="max-width:200px;">Dismiss</button>
+    </div>
+
+    <script>
+        // ════════════════════════════════
+        //  TABS
+        // ════════════════════════════════
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+            });
+        });
+
+        // ════════════════════════════════
+        //  CLOCK
+        // ════════════════════════════════
+        let clockFmt = '12';
+
+        function makeSegControl(id, cb) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.querySelectorAll('.seg-option').forEach(o => {
+                o.addEventListener('click', () => {
+                    el.querySelectorAll('.seg-option').forEach(x => x.classList.remove('active'));
+                    o.classList.add('active');
+                    if (cb) cb(o.dataset.value);
+                });
+            });
+        }
+        makeSegControl('clockFmtSeg', v => {
+            clockFmt = v;
+        });
+
+        function updateClock() {
+            const now = new Date();
+            let h = now.getHours(),
+                m = now.getMinutes(),
+                s = now.getSeconds();
+            let suffix = '';
+            if (clockFmt === '12') {
+                suffix = h >= 12 ? ' PM' : ' AM';
+                h = h % 12 || 12;
+            }
+            document.getElementById('clock-time').textContent =
+                String(h).padStart(2, '0') + ':' + pad(m) + ':' + pad(s) + suffix;
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('clock-date').textContent =
+                days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+            document.getElementById('clock-tz').textContent =
+                Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+        setInterval(updateClock, 500);
+        updateClock();
+
+        // ════════════════════════════════
+        //  STOPWATCH
+        // ════════════════════════════════
+        let swRunning = false,
+            swStart = 0,
+            swElapsed = 0,
+            swInterval = null;
+        let lapTimes = [],
+            lastLapAt = 0;
+
+        const swDisplay = document.getElementById('sw-display');
+        const swMs = document.getElementById('sw-ms');
+        const swStart_ = document.getElementById('sw-start');
+        const swLap = document.getElementById('sw-lap');
+        const swReset = document.getElementById('sw-reset');
+        const swLapsList = document.getElementById('sw-laps');
+        const swEmpty = document.getElementById('sw-laps-empty');
+
+        function pad(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        function fmtMs(ms) {
+            const tot = Math.floor(ms);
+            const h = Math.floor(tot / 3600000);
+            const m = Math.floor((tot % 3600000) / 60000);
+            const s = Math.floor((tot % 60000) / 1000);
+            const cs = Math.floor((tot % 1000) / 10);
+            return {
+                main: (h > 0 ? pad(h) + ':' : '') + pad(m) + ':' + pad(s),
+                ms: pad(cs)
+            };
+        }
+
+        function swTick() {
+            swElapsed = Date.now() - swStart;
+            const {
+                main,
+                ms
+            } = fmtMs(swElapsed);
+            swDisplay.textContent = main;
+            swMs.textContent = '.' + ms;
+        }
+
+        swStart_.addEventListener('click', () => {
+            if (!swRunning) {
+                swRunning = true;
+                swStart = Date.now() - swElapsed;
+                swInterval = setInterval(swTick, 16);
+                swStart_.textContent = 'Stop';
+                swLap.disabled = false;
+                swReset.disabled = false;
+            } else {
+                swRunning = false;
+                clearInterval(swInterval);
+                swStart_.textContent = 'Start';
+                swLap.disabled = true;
+            }
+        });
+
+        swLap.addEventListener('click', () => {
+            const split = swElapsed - lastLapAt;
+            lastLapAt = swElapsed;
+            lapTimes.push({
+                total: swElapsed,
+                split
+            });
+            renderLaps();
+        });
+
+        swReset.addEventListener('click', () => {
+            swRunning = false;
+            clearInterval(swInterval);
+            swElapsed = 0;
+            swStart = 0;
+            lastLapAt = 0;
+            lapTimes = [];
+            swDisplay.textContent = '00:00';
+            swMs.textContent = '.00';
+            swStart_.textContent = 'Start';
+            swLap.disabled = true;
+            swReset.disabled = true;
+            renderLaps();
+        });
+
+        function renderLaps() {
+            swLapsList.querySelectorAll('.lap-item').forEach(e => e.remove());
+            if (lapTimes.length === 0) {
+                swEmpty.style.display = '';
+                return;
+            }
+            swEmpty.style.display = 'none';
+            const splits = lapTimes.map(l => l.split);
+            const best = Math.min(...splits),
+                worst = Math.max(...splits);
+            [...lapTimes].reverse().forEach((lap, ri) => {
+                const i = lapTimes.length - ri;
+                const el = document.createElement('div');
+                el.className = 'lap-item';
+                if (lap.split === best && lapTimes.length > 1) el.classList.add('best-lap');
+                if (lap.split === worst && lapTimes.length > 1) el.classList.add('worst-lap');
+                const {
+                    main: tm
+                } = fmtMs(lap.total), {
+                    main: sp
+                } = fmtMs(lap.split);
+                el.innerHTML = `<span class="lap-num">LAP ${i}</span>
+      <span class="lap-split">+${sp}</span>
+      <span class="lap-time">${tm}</span>`;
+                swLapsList.appendChild(el);
+            });
+        }
+
+        // ════════════════════════════════
+        //  COUNTDOWN TIMER
+        // ════════════════════════════════
+        let timerTotal = 0,
+            timerLeft = 0,
+            timerRunning = false,
+            timerInterval = null;
+        const circumference = 2 * Math.PI * 65; // ~408
+
+        const timerDisp = document.getElementById('timer-display');
+        const timerLbl = document.getElementById('timer-label');
+        const timerRing = document.getElementById('timer-ring');
+        const timerStart = document.getElementById('timer-start');
+        const timerPause = document.getElementById('timer-pause');
+        const timerReset_ = document.getElementById('timer-reset');
+        const tH = document.getElementById('t-h'),
+            tM = document.getElementById('t-m'),
+            tS = document.getElementById('t-s');
+
+        timerRing.style.strokeDasharray = circumference;
+        timerRing.style.strokeDashoffset = 0;
+
+        function setTimerDisplay(ms) {
+            const s = Math.ceil(ms / 1000);
+            const h = Math.floor(s / 3600),
+                m = Math.floor((s % 3600) / 60),
+                sec = s % 60;
+            timerDisp.textContent = (h > 0 ? pad(h) + ':' : '') + pad(m) + ':' + pad(sec);
+            const pct = timerTotal > 0 ? ms / timerTotal : 1;
+            timerRing.style.strokeDashoffset = circumference * (1 - pct);
+            const cls = timerRing.classList;
+            cls.remove('warning', 'danger');
+            timerDisp.classList.remove('warning', 'danger');
+            if (pct <= 0.1) {
+                cls.add('danger');
+                timerDisp.classList.add('danger');
+            } else if (pct <= 0.25) {
+                cls.add('warning');
+                timerDisp.classList.add('warning');
+            }
+        }
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (timerRunning) return;
+                const mins = parseInt(btn.dataset.m);
+                tH.value = Math.floor(mins / 60);
+                tM.value = mins % 60;
+                tS.value = 0;
+            });
+        });
+
+        timerStart.addEventListener('click', () => {
+            const h = parseInt(tH.value) || 0,
+                m = parseInt(tM.value) || 0,
+                s = parseInt(tS.value) || 0;
+            if (h === 0 && m === 0 && s === 0) return;
+            timerTotal = timerLeft = (h * 3600 + m * 60 + s) * 1000;
+            timerRunning = true;
+            document.getElementById('timer-inputs').style.opacity = '0.4';
+            document.getElementById('timer-inputs').style.pointerEvents = 'none';
+            timerStart.disabled = true;
+            timerPause.disabled = false;
+            timerReset_.disabled = false;
+            timerLbl.textContent = 'COUNTING DOWN';
+            let last = Date.now();
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                timerLeft -= (now - last);
+                last = now;
+                if (timerLeft <= 0) {
+                    timerLeft = 0;
+                    setTimerDisplay(0);
+                    clearInterval(timerInterval);
+                    timerRunning = false;
+                    timerLbl.textContent = 'DONE!';
+                    timerDisp.textContent = '00:00';
+                    ringAlarm('Timer finished');
+                    resetTimerUI();
+                    return;
+                }
+                setTimerDisplay(timerLeft);
+            }, 50);
+        });
+
+        timerPause.addEventListener('click', () => {
+            if (timerRunning) {
+                timerRunning = false;
+                clearInterval(timerInterval);
+                timerPause.textContent = 'Resume';
+                timerLbl.textContent = 'PAUSED';
+            } else {
+                timerRunning = true;
+                timerPause.textContent = 'Pause';
+                timerLbl.textContent = 'COUNTING DOWN';
+                let last = Date.now();
+                timerInterval = setInterval(() => {
+                    const now = Date.now();
+                    timerLeft -= (now - last);
+                    last = now;
+                    if (timerLeft <= 0) {
+                        timerLeft = 0;
+                        setTimerDisplay(0);
+                        clearInterval(timerInterval);
+                        timerLbl.textContent = 'DONE!';
+                        timerDisp.textContent = '00:00';
+                        ringAlarm('Timer finished');
+                        resetTimerUI();
+                        return;
+                    }
+                    setTimerDisplay(timerLeft);
+                }, 50);
+            }
+        });
+
+        timerReset_.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerLeft = 0;
+            timerTotal = 0;
+            timerDisp.textContent = '00:00';
+            timerRing.style.strokeDashoffset = 0;
+            timerRing.classList.remove('warning', 'danger');
+            timerDisp.classList.remove('warning', 'danger');
+            timerLbl.textContent = 'SET A DURATION';
+            resetTimerUI();
+        });
+
+        function resetTimerUI() {
+            document.getElementById('timer-inputs').style.opacity = '';
+            document.getElementById('timer-inputs').style.pointerEvents = '';
+            timerStart.disabled = false;
+            timerPause.disabled = true;
+            timerPause.textContent = 'Pause';
+            timerReset_.disabled = true;
+        }
+
+        // ════════════════════════════════
+        //  ALARM
+        // ════════════════════════════════
+        let alarms = [];
+        let alarmAudio = null;
+
+        function ringAlarm(label) {
+            document.getElementById('alarm-ring-label').textContent = label || 'Time\'s up';
+            document.getElementById('alarm-ring').classList.add('show');
+            // Generate beep with Web Audio API
+            try {
+                const ctx = new(window.AudioContext || window.webkitAudioContext)();
+
+                function beep(freq, start, dur) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = freq;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime + start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+                    osc.start(ctx.currentTime + start);
+                    osc.stop(ctx.currentTime + start + dur);
+                }
+                for (let i = 0; i < 5; i++) {
+                    beep(880, i * 0.5, 0.3);
+                    beep(1100, i * 0.5 + 0.15, 0.15);
+                }
+            } catch (e) {}
+        }
+
+        document.getElementById('alarm-dismiss').addEventListener('click', () => {
+            document.getElementById('alarm-ring').classList.remove('show');
+        });
+
+        document.getElementById('alarm-add-btn').addEventListener('click', () => {
+            const val = document.getElementById('alarm-time-input').value;
+            if (!val) return;
+            const label = document.getElementById('alarm-label-input').value.trim() || '';
+            alarms.push({
+                time: val,
+                label,
+                id: Date.now()
+            });
+            document.getElementById('alarm-label-input').value = '';
+            renderAlarms();
+        });
+
+        function renderAlarms() {
+            const list = document.getElementById('alarm-list');
+            list.querySelectorAll('.alarm-item').forEach(e => e.remove());
+            const empty = document.getElementById('alarm-empty');
+            if (alarms.length === 0) {
+                empty.style.display = '';
+                return;
+            }
+            empty.style.display = 'none';
+            alarms.forEach(a => {
+                const el = document.createElement('div');
+                el.className = 'alarm-item';
+                el.dataset.id = a.id;
+                const [hh, mm] = a.time.split(':').map(Number);
+                const h12 = hh % 12 || 12,
+                    suf = hh >= 12 ? 'PM' : 'AM';
+                el.innerHTML = `<div>
+      <div class="alarm-time">${pad(h12)}:${pad(mm)} <span style="font-size:0.8rem;opacity:0.6">${suf}</span></div>
+      ${a.label?`<div class="alarm-label-txt">${a.label}</div>`:''}
+    </div>
+    <button class="alarm-del" data-id="${a.id}">Remove</button>`;
+                list.appendChild(el);
+            });
+            list.querySelectorAll('.alarm-del').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = parseInt(btn.dataset.id);
+                    alarms = alarms.filter(a => a.id !== id);
+                    renderAlarms();
+                });
+            });
+        }
+
+        function checkAlarms() {
+            const now = new Date();
+            const hh = pad(now.getHours()),
+                mm = pad(now.getMinutes());
+            const ss = now.getSeconds();
+            if (ss === 0) {
+                alarms.forEach(a => {
+                    if (a.time === hh + ':' + mm) ringAlarm(a.label || 'Alarm!');
+                });
+            }
+        }
+        setInterval(checkAlarms, 1000);
+
+        // ════════════════════════════════
+        //  WORLD TIMES
+        // ════════════════════════════════
+        let worldCities = [{
+                tz: 'America/New_York',
+                name: 'New York'
+            },
+            {
+                tz: 'Europe/London',
+                name: 'London'
+            },
+            {
+                tz: 'Asia/Tokyo',
+                name: 'Tokyo'
+            },
+            {
+                tz: 'Australia/Sydney',
+                name: 'Sydney'
+            },
+        ];
+
+        function getWorldTime(tz) {
+            const now = new Date();
+            try {
+                const opts = {
+                    timeZone: tz,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                };
+                const dateOpts = {
+                    timeZone: tz,
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                };
+                const time = now.toLocaleTimeString('en-US', opts);
+                const date = now.toLocaleDateString('en-US', dateOpts);
+                // offset diff
+                const localOff = -now.getTimezoneOffset();
+                const tzDate = new Date(now.toLocaleString('en-US', {
+                    timeZone: tz
+                }));
+                const localDate = new Date(now.toLocaleString('en-US'));
+                const diffH = Math.round((tzDate - localDate) / 3600000);
+                const diffStr = diffH === 0 ? 'Local' : (diffH > 0 ? '+' + diffH + 'h' : diffH + 'h') + ' from you';
+                return {
+                    time,
+                    date,
+                    diffStr
+                };
+            } catch (e) {
+                return {
+                    time: '--:--',
+                    date: '',
+                    diffStr: ''
+                };
+            }
+        }
+
+        function renderWorldTimes() {
+            const grid = document.getElementById('world-grid');
+            grid.innerHTML = '';
+            worldCities.forEach((city, i) => {
+                const {
+                    time,
+                    date,
+                    diffStr
+                } = getWorldTime(city.tz);
+                const [h, m, s] = time.split(':');
+                const el = document.createElement('div');
+                el.className = 'world-item';
+                el.dataset.i = i;
+                el.innerHTML = `<div class="world-city">${city.name}</div>
+      <div class="world-tz-name">${city.tz}</div>
+      <div class="world-time" id="wt-${i}">${h}:${m}:<span style="opacity:0.5;font-size:0.65em">${s}</span></div>
+      <div class="world-date">${date}</div>
+      <div class="world-diff">${diffStr}</div>
+      <button class="alarm-del" style="margin-top:8px;font-size:0.6rem;padding:3px 8px;" data-wi="${i}">✕</button>`;
+                grid.appendChild(el);
+            });
+            grid.querySelectorAll('[data-wi]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    worldCities.splice(parseInt(btn.dataset.wi), 1);
+                    renderWorldTimes();
+                });
+            });
+        }
+
+        function updateWorldTimes() {
+            worldCities.forEach((city, i) => {
+                const el = document.getElementById('wt-' + i);
+                if (!el) return;
+                const {
+                    time
+                } = getWorldTime(city.tz);
+                const [h, m, s] = time.split(':');
+                el.innerHTML = `${h}:${m}:<span style="opacity:0.5;font-size:0.65em">${s}</span>`;
+            });
+        }
+
+        document.getElementById('add-city-btn').addEventListener('click', () => {
+            const sel = document.getElementById('city-select');
+            if (!sel.value) return;
+            const [tz, name] = sel.value.split('|');
+            if (worldCities.find(c => c.tz === tz)) return;
+            worldCities.push({
+                tz,
+                name
+            });
+            sel.value = '';
+            renderWorldTimes();
+        });
+
+        renderWorldTimes();
+        setInterval(updateWorldTimes, 1000);
+    </script>
+</body>
+
+</html>
